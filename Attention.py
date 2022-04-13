@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utils import count_parameters
-import math
 from utils import *
 
 # super function returns a temporary object of the superclass that allows access to all of its methods to its child class
