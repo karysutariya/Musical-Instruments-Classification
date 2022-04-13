@@ -1,13 +1,9 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import init
-import torch.optim as optim
-from torch.autograd import Variable
 from utils import count_parameters
-from weightInit import *
-
+import math
+from utils import *
 
 # super function returns a temporary object of the superclass that allows access to all of its methods to its child class
 class Attention(nn.Module):

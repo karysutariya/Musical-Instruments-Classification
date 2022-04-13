@@ -1,14 +1,9 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import init
-import torch.optim as optim
-from torch.autograd import Variable
 from timm.models.layers import trunc_normal_, DropPath
-from timm.models.registry import register_model
-from weightInit import *
 from utils import *
+import math
 
 
 class Block(nn.Module):

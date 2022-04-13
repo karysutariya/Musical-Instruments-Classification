@@ -8,6 +8,9 @@ from copy import deepcopy
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from RNN import RNN_bidirectional
+from Attention import *
+from shallowConvNext import *
+from mconvNext import *
 
 # get arguments
 args = parse_arguments()
@@ -43,7 +46,6 @@ for seed in seeds:
 
     # Other imports now
     from utils import *
-    from attentionModel import *
     from dataPipeline import *
     from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
     from FCN import *
@@ -71,6 +73,29 @@ for seed in seeds:
         model = Fcn(hidden_units=args.hidden_size,
                     drop_rate=args.dropout_rate,
                     classes_num=20)
+    elif args.model_type == 'attention':
+        model = DecisionLevelSingleAttention(
+                freq_bins=128,
+                classes_num=20,
+                emb_layers=args.emb_layers,
+                hidden_units=args.hidden_size,
+                drop_rate=args.dropout_rate)
+    elif args.model_type == 'mconvNext':
+        model = trainConvNextModel(
+                freq_bins=128,
+                classes_num=20,
+                emb_layers=args.emb_layers,
+                hidden_units=args.hidden_size,
+                drop_rate=args.dropout_rate)
+    elif args.model_type == 'shallowConvNext':
+        model = trainShallowConvNext(
+                freq_bins=128,
+                classes_num=20,
+                emb_layers=args.emb_layers,
+                hidden_units=args.hidden_size,
+                drop_rate=args.dropout_rate)
+
+
 
     model = model.to(device)  # .cuda()
 
