@@ -1,4 +1,4 @@
-from sklearn.neural_network import MLPClassifier
+# from sklearn.neural_network import MLPClassifier
 import torch
 import torch.nn as nn
 from torch.nn import init
@@ -10,8 +10,9 @@ from utils import count_parameters
 #                          solver='adam', batch_size=batch_size, learning_rate_init=lr,random_state=1,
 #                          learning_rate='constant',  max_iter=300,)
 
+
 class Fcn(nn.Module):
-    def __init__(self,hidden_units, drop_rate,classes_num):
+    def __init__(self, hidden_units, drop_rate, classes_num):
         super(Fcn, self).__init__()
         self.embed = nn.Sequential(
             nn.Linear(hidden_units, hidden_units),
@@ -24,11 +25,11 @@ class Fcn(nn.Module):
             nn.Dropout(drop_rate),
             nn.LeakyReLU(),
         )
-        
+
         self.classify = nn.Linear(hidden_units, classes_num)
         self.param_count = count_parameters(self)
         print(self.param_count)
-        
+
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 init.xavier_normal_(m.weight.data)
@@ -40,4 +41,3 @@ class Fcn(nn.Module):
         out = (out+X).mean(1)
         out = torch.sigmoid(self.classify(out))
         return out
-        

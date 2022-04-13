@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import count_parameters
-from utils import *
+from utils import init_layer, init_bn, count_parameters
 
 # super function returns a temporary object of the superclass that allows access to all of its methods to its child class
+
+
 class Attention(nn.Module):
     def __init__(self, n_in, n_out):
         super(Attention, self).__init__()

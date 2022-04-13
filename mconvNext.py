@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.layers import trunc_normal_, DropPath
-from utils import *
-import math
+from utils import count_parameters, init_layer, init_bn
 
 
 class Block(nn.Module):
@@ -119,7 +118,7 @@ class convNextModel(nn.Module):
         # x = x[:, :, :, 0]   # (samples_num, classes_num, time_steps)
         epsilon = 1e-7
         x = torch.clamp(x, epsilon, 1. - epsilon)
-        norm_att = x / torch.sum(x)
+        # norm_att = x / torch.sum(x)
         x = F.hardtanh(x, 0., 1.)
         return x
 
@@ -213,8 +212,6 @@ class EmbeddingLayers(nn.Module):
 
         else:
             return all_outs
-
-        return x
 
 
 class trainConvNextModel(nn.Module):

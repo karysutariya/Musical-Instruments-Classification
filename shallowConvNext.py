@@ -1,8 +1,7 @@
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import *
+from utils import count_parameters, init_layer, init_bn
 from timm.models.layers import trunc_normal_, DropPath
 
 
@@ -17,31 +16,36 @@ class Block(nn.Module):
         drop_path (float): Stochastic depth rate. Default: 0.0
         layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
     """
+
     def __init__(self, dim, drop_path=0., layer_scale_init_value=1e-6):
         super().__init__()
-        self.dwconv = nn.Conv2d(dim, dim, kernel_size=(1,1), padding=(0,0), groups=dim) # depthwise conv
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=(
+            1, 1), padding=(0, 0), groups=dim)  # depthwise conv
         self.norm = LayerNorm(dim, eps=1e-6)
-        self.pwconv1 = nn.Linear(dim, 4 * dim) # pointwise/1x1 convs, implemented with linear layers
+        # pointwise/1x1 convs, implemented with linear layers
+        self.pwconv1 = nn.Linear(dim, 4 * dim)
         self.act = nn.GELU()
         self.pwconv2 = nn.Linear(4 * dim, dim)
         self.gamma = nn.Parameter(layer_scale_init_value * torch.ones((dim)),
-                                    requires_grad=True) if layer_scale_init_value > 0 else None
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+                                  requires_grad=True) if layer_scale_init_value > 0 else None
+        self.drop_path = DropPath(
+            drop_path) if drop_path > 0. else nn.Identity()
 
     def forward(self, x):
         input = x
         x = self.dwconv(x)
-        x = x.permute(0, 2, 3, 1) # (N, C, H, W) -> (N, H, W, C)
+        x = x.permute(0, 2, 3, 1)  # (N, C, H, W) -> (N, H, W, C)
         x = self.norm(x)
         x = self.pwconv1(x)
         x = self.act(x)
         x = self.pwconv2(x)
         if self.gamma is not None:
             x = self.gamma * x
-        x = x.permute(0, 3, 1, 2) # (N, H, W, C) -> (N, C, H, W)
+        x = x.permute(0, 3, 1, 2)  # (N, H, W, C) -> (N, C, H, W)
 
         x = input + self.drop_path(x)
         return x
+
 
 class Attention(nn.Module):
     r""" ConvNeXt
@@ -56,38 +60,43 @@ class Attention(nn.Module):
         layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
         head_init_scale (float): Init scaling value for classifier weights and biases. Default: 1.
     """
+
     def __init__(self, n_in=128, n_out=20,
                  depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], drop_path_rate=0.,
                  layer_scale_init_value=1e-6, head_init_scale=1.,
                  ):
         super().__init__()
 
-        self.downsample_layers = nn.ModuleList() # stem and 3 intermediate downsampling conv layers
+        # stem and 3 intermediate downsampling conv layers
+        self.downsample_layers = nn.ModuleList()
         stem = nn.Sequential(
-            nn.Conv2d(n_in, dims[0], kernel_size=(1,1), stride=(1,1)),
+            nn.Conv2d(n_in, dims[0], kernel_size=(1, 1), stride=(1, 1)),
             LayerNorm(dims[0], eps=1e-6, data_format="channels_first")
         )
         self.downsample_layers.append(stem)
-        for i in range(1): #3
+        for i in range(1):  # 3
             downsample_layer = nn.Sequential(
-                    LayerNorm(dims[i], eps=1e-6, data_format="channels_first"),
-                    nn.Conv2d(dims[i], dims[i+1], kernel_size=(1,1), stride=(1,1)),
+                LayerNorm(dims[i], eps=1e-6, data_format="channels_first"),
+                nn.Conv2d(dims[i], dims[i+1],
+                          kernel_size=(1, 1), stride=(1, 1)),
             )
             self.downsample_layers.append(downsample_layer)
-        self.stages = nn.ModuleList() # 4 feature resolution stages, each consisting of multiple residual blocks
-        dp_rates=[x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
+        # 4 feature resolution stages, each consisting of multiple residual blocks
+        self.stages = nn.ModuleList()
+        dp_rates = [x.item()
+                    for x in torch.linspace(0, drop_path_rate, sum(depths))]
         cur = 0
-        for i in range(1): #4
+        for i in range(1):  # 4
             stage = nn.Sequential(
                 *[Block(dim=dims[i], drop_path=dp_rates[cur + j],
-                layer_scale_init_value=layer_scale_init_value) for j in range(depths[i])]
+                        layer_scale_init_value=layer_scale_init_value) for j in range(depths[i])]
             )
             self.stages.append(stage)
             cur += depths[i]
 
-        #self.norm = nn.LayerNorm(dims[-1], eps=1e-6) # final norm layer
-        self.norm = nn.LayerNorm(dims[0], eps=1e-6) # final norm layer
-        #self.head = nn.Linear(dims[-1], n_out)
+        # self.norm = nn.LayerNorm(dims[-1], eps=1e-6) # final norm layer
+        self.norm = nn.LayerNorm(dims[0], eps=1e-6)  # final norm layer
+        # self.head = nn.Linear(dims[-1], n_out)
         self.head = nn.Linear(dims[0], n_out)
 
         self.apply(self._init_weights)
@@ -103,17 +112,19 @@ class Attention(nn.Module):
         for i in range(1):
             x = self.downsample_layers[i](x)
             x = self.stages[i](x)
-        return self.norm(x.mean([-2, -1])) # global average pooling, (N, C, H, W) -> (N, C)
+        # global average pooling, (N, C, H, W) -> (N, C)
+        return self.norm(x.mean([-2, -1]))
 
     def forward(self, x):
         x = self.forward_features(x)
         x = self.head(x)
         x = torch.sigmoid(x)
-        #x = x[:, :, :, 0]   # (samples_num, classes_num, time_steps)
+        # x = x[:, :, :, 0]   # (samples_num, classes_num, time_steps)
         epsilon = 1e-7
         x = torch.clamp(x, epsilon, 1. - epsilon)
         x = x / torch.sum(x)
-        x = F.hardtanh(x, 0., 1.)  #I used here because I was having error "values has to be between 0 and 1"
+        # I used here because I was having error "values has to be between 0 and 1"
+        x = F.hardtanh(x, 0., 1.)
         return x
 
 
@@ -123,6 +134,7 @@ class LayerNorm(nn.Module):
     shape (batch_size, height, width, channels) while channels_first corresponds to inputs
     with shape (batch_size, channels, height, width).
     """
+
     def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last"):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(normalized_shape))
@@ -142,10 +154,6 @@ class LayerNorm(nn.Module):
             x = (x - u) / torch.sqrt(s + self.eps)
             x = self.weight[:, None, None] * x + self.bias[:, None, None]
             return x
-
-
-
-
 
 
 class EmbeddingLayers(nn.Module):
@@ -211,7 +219,6 @@ class EmbeddingLayers(nn.Module):
             return all_outs
 
         return x
-
 
 
 class trainShallowConvNext(nn.Module):

@@ -1,13 +1,15 @@
-import h5py
-import os
+# import h5py
+# import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset, Subset, Sampler
+
 
 def binarize_targets(targets, threshold=0.5):
     targets[targets < threshold] = 0
     targets[targets > 0] = 1
     return targets
+
 
 def binary2categorical(targets):
     # Input is 20 dimensional. Output is 20x2 dimensional
@@ -16,24 +18,29 @@ def binary2categorical(targets):
     categorical[targets == 0, 0] = 1
     return categorical
 
+
 def train_val_split(full_dataset, val_ratio, aug=False):
     length = len(full_dataset)
-    val_indices = np.random.choice(length, int(length*val_ratio), replace=False)
-    train_indices = list(set(np.arange(length))- set(val_indices))
+    val_indices = np.random.choice(
+        length, int(length*val_ratio), replace=False)
+    train_indices = list(set(np.arange(length)) - set(val_indices))
     train_dataset = Subset(full_dataset, train_indices)
     val_dataset = Subset(full_dataset, val_indices)
     return train_dataset, val_dataset
 
+
 def get_inst_datasets(npz_path, pos_weight_path, ord_path):
     data = np.load(npz_path)
     y_masks = data['Y_mask']
-    full_dataset = MICDataset(npz_path, pos_weight_path, ord_path, missing=False)
-    y_trues = full_dataset.Y_true
+    full_dataset = MICDataset(
+        npz_path, pos_weight_path, ord_path, missing=False)
+    # y_trues = full_dataset.Y_true
     inst_datasets = []
     for i in range(20):
-        indices = np.where(y_masks[:,i] > 0)[0]
+        indices = np.where(y_masks[:, i] > 0)[0]
         inst_datasets.append(Subset(full_dataset, indices))
     return full_dataset, inst_datasets
+
 
 class MICDataset(Dataset):
     # Pytorch dataset for OpenMIC
@@ -48,7 +55,7 @@ class MICDataset(Dataset):
         else:
             self.Y_true[self.Y_mask == 0] = 0
         self.length = self.X.shape[0]
-        
+
     def __len__(self):
         return self.length
 
@@ -58,19 +65,20 @@ class MICDataset(Dataset):
         Y = binary2categorical(Y_true)
         Y_mask = self.Y_mask[index]
         X = torch.tensor(X, requires_grad=False, dtype=torch.float32)
-        Y_true = torch.tensor(Y_true.astype(float), requires_grad=False, dtype=torch.float32)
+        Y_true = torch.tensor(Y_true.astype(
+            float), requires_grad=False, dtype=torch.float32)
         Y = torch.tensor(Y, requires_grad=False, dtype=torch.float32)
         Y_mask = torch.ByteTensor(Y_mask.astype(int))
         return X, Y, Y_true, Y_mask
-        
+
+
 def create_train_set(train_dataset, possible_inds, args):
     if args.fixed_missing:
         if args.missing_method == 'all':
             return Subset(train_dataset, possible_inds)
 
 
-
-#IGNORE FROM HERE, I'M still working on this to see how to improve the imbalance data
+# IGNORE FROM HERE, I'M still working on this to see how to improve the imbalance data
 #############################################################################
 class ImbalancedDatasetSampler(Sampler):
     """Samples elements randomly from a given list of indices for imbalanced dataset
@@ -80,18 +88,18 @@ class ImbalancedDatasetSampler(Sampler):
     """
 
     def __init__(self, dataset, inst, indices=None, num_samples=None):
-                
-        # if indices is not provided, 
+
+        # if indices is not provided,
         # all elements in the dataset will be considered
         self.indices = list(range(len(dataset))) \
             if indices is None else indices
-            
-        # if num_samples is not provided, 
+
+        # if num_samples is not provided,
         # draw `len(indices)` samples in each iteration
         self.num_samples = len(self.indices) \
             if num_samples is None else num_samples
-            
-        # distribution of classes in the dataset 
+
+        # distribution of classes in the dataset
         label_to_count = {}
         for idx in self.indices:
             label = self._get_label(dataset, idx, inst)
@@ -99,7 +107,7 @@ class ImbalancedDatasetSampler(Sampler):
                 label_to_count[label] += 1
             else:
                 label_to_count[label] = 1
-                
+
         # weight for each sample
         weights = [1.0 / label_to_count[self._get_label(dataset, idx, inst)]
                    for idx in self.indices]
@@ -109,7 +117,7 @@ class ImbalancedDatasetSampler(Sampler):
         label = dataset.Y_true[idx, inst]
         label = label > 0.5
         return label
-                
+
     def __iter__(self):
         return (self.indices[i] for i in torch.multinomial(
             self.weights, self.num_samples, replacement=True))

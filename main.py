@@ -8,9 +8,10 @@ from copy import deepcopy
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from RNN import RNN_bidirectional
-from Attention import *
-from shallowConvNext import *
-from mconvNext import *
+from Attention import DecisionLevelSingleAttention
+from shallowConvNext import trainShallowConvNext
+from mconvNext import trainConvNextModel
+from utils import discriminative_evaluate, remove_dir, discriminative_trainer
 
 # get arguments
 args = parse_arguments()
@@ -45,10 +46,9 @@ for seed in seeds:
     np.random.seed(seed)
 
     # Other imports now
-    from utils import *
-    from dataPipeline import *
-    from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
-    from FCN import *
+    from dataPipeline import MICDataset
+    from torch.utils.data import DataLoader, Subset
+    from FCN import Fcn
     TRAIN = args.train  # trainData path
     TEST = args.test
     VAL_SPLIT_PATH = args.val_split_path
@@ -75,27 +75,25 @@ for seed in seeds:
                     classes_num=20)
     elif args.model_type == 'attention':
         model = DecisionLevelSingleAttention(
-                freq_bins=128,
-                classes_num=20,
-                emb_layers=args.emb_layers,
-                hidden_units=args.hidden_size,
-                drop_rate=args.dropout_rate)
+            freq_bins=128,
+            classes_num=20,
+            emb_layers=args.emb_layers,
+            hidden_units=args.hidden_size,
+            drop_rate=args.dropout_rate)
     elif args.model_type == 'mconvNext':
         model = trainConvNextModel(
-                freq_bins=128,
-                classes_num=20,
-                emb_layers=args.emb_layers,
-                hidden_units=args.hidden_size,
-                drop_rate=args.dropout_rate)
+            freq_bins=128,
+            classes_num=20,
+            emb_layers=args.emb_layers,
+            hidden_units=args.hidden_size,
+            drop_rate=args.dropout_rate)
     elif args.model_type == 'shallowConvNext':
         model = trainShallowConvNext(
-                freq_bins=128,
-                classes_num=20,
-                emb_layers=args.emb_layers,
-                hidden_units=args.hidden_size,
-                drop_rate=args.dropout_rate)
-
-
+            freq_bins=128,
+            classes_num=20,
+            emb_layers=args.emb_layers,
+            hidden_units=args.hidden_size,
+            drop_rate=args.dropout_rate)
 
     model = model.to(device)  # .cuda()
 
