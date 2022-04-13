@@ -1,2 +1,4 @@
 Model 3: RNN
 python main.py --num_epochs 250 --batch_size 128 --id RNNModel --loss_type BCE --lr 0.0005 --dropout_rate 0.6 --hidden_size 128 --emb_layers 3 --log_dir ./log/ISMIR2019/ --model_type RNN
+Model 2: FCN
+python main.py --num_epochs 250 --batch_size 128 --id mlpmodel --loss_type BCE --lr 0.0005 --dropout_rate 0.5 --hidden_size 128 --emb_layers 3 --log_dir ./log/ISMIR2019/ --model_type FCN

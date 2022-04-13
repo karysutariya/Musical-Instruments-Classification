@@ -46,7 +46,7 @@ for seed in seeds:
     from attentionModel import *
     from dataPipeline import *
     from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
-
+    from FCN import *
     TRAIN = args.train #trainData path
     TEST = args.test
     VAL_SPLIT_PATH = args.val_split_path
@@ -68,7 +68,10 @@ for seed in seeds:
     
     if args.model_type == 'RNN':
        model = RNN_bidirectional()   
-
+    elif args.model_type == 'FCN':
+        model =  FNC(hidden_units=args.hidden_size,
+                drop_rate=args.dropout_rate,
+                classes_num=20)
                 
     model = model.to(device) #.cuda()
 
