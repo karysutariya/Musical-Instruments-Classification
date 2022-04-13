@@ -10,9 +10,9 @@ from utils import count_parameters
 #                          solver='adam', batch_size=batch_size, learning_rate_init=lr,random_state=1,
 #                          learning_rate='constant',  max_iter=300,)
 
-class Mlp(nn.Module):
+class Fcn(nn.Module):
     def __init__(self,hidden_units, drop_rate,classes_num):
-        super(Mlp, self).__init__()
+        super(Fcn, self).__init__()
         self.embed = nn.Sequential(
             nn.Linear(hidden_units, hidden_units),
             nn.Dropout(drop_rate),
