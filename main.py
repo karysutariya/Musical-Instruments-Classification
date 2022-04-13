@@ -1,10 +1,10 @@
 import random
 import torch
 import numpy as np
-from arguments import parse_arguments 
+from arguments import parse_arguments
 import os
 from copy import deepcopy
-import datetime
+# import datetime
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from RNN import RNN_bidirectional
@@ -22,7 +22,7 @@ anneal_factor = args.anneal_factor
 patience = args.patience
 base_path = os.path.join(args.log_dir, args.model_type)
 
-seeds = [0,42,1346,325,1243,76,423,567,34,534,46,456,346,12,239]
+seeds = [0, 42, 1346, 325, 1243, 76, 423, 567, 34, 534, 46, 456, 346, 12, 239]
 macro_f1_all_0 = []
 weighted_f1_all_0 = []
 macro_precision_all_0 = []
@@ -35,7 +35,7 @@ macro_recall_all_2 = []
 
 for seed in seeds:
 
-    # 
+    #
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -47,12 +47,12 @@ for seed in seeds:
     from dataPipeline import *
     from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
     from FCN import *
-    TRAIN = args.train #trainData path
+    TRAIN = args.train  # trainData path
     TEST = args.test
     VAL_SPLIT_PATH = args.val_split_path
 
     # Load datasets
-    train_dataset = MICDataset(TRAIN) #MICDataset is from dataPipeline
+    train_dataset = MICDataset(TRAIN)  # MICDataset is from dataPipeline
     train_val_split = np.load(args.val_split_path)
     train_data = Subset(train_dataset, train_val_split['train'])
     val_data = Subset(train_dataset, train_val_split['val'])
@@ -62,33 +62,32 @@ for seed in seeds:
     test_dataset = MICDataset(TEST)
     test_loader = DataLoader(test_dataset, batch_size)
 
+    # AttenModel Configuration
+    # Give options incase of other models
 
-    #AttenModel Configuration
-    #Give options incase of other models
-    
     if args.model_type == 'RNN':
-       model = RNN_bidirectional()   
+        model = RNN_bidirectional()
     elif args.model_type == 'FCN':
-        model =  Fcn(hidden_units=args.hidden_size,
-                drop_rate=args.dropout_rate,
-                classes_num=20)
-                
-    model = model.to(device) #.cuda()
+        model = Fcn(hidden_units=args.hidden_size,
+                    drop_rate=args.dropout_rate,
+                    classes_num=20)
+
+    model = model.to(device)  # .cuda()
 
     optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=lr,
-            weight_decay=args.wd)
+        model.parameters(),
+        lr=lr,
+        weight_decay=args.wd)
 
-    #Decays the learning rate of each parameter group by gamma once the number of epoch reaches one of the milestones [value].
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [30], gamma = 0.1)
-    
+    # Decays the learning rate of each parameter group by gamma once the number of epoch reaches one of the milestones [value].
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, [30], gamma=0.1)
+
     # if args.loss_type == 'BCE':
     #     criterion = BCE()
     # elif args.loss_type == 'PartialBCE':
     #     criterion = PartialBCE(args.alpha, args.beta, args.gamma)
     criterion = torch.nn.BCELoss()
-
 
     # Write to view on TENSORBOARD
     # writer = SummaryWriter(os.path.join(log_dir, run_name))
@@ -97,8 +96,8 @@ for seed in seeds:
     print("Dumping logs in {}".format(writer_path))
     writer = SummaryWriter(writer_path)
 
-    #We saved 3 versions of the model based on the metric checkings
-    best_models = [None, None, None] 
+    # We saved 3 versions of the model based on the metric checkings
+    best_models = [None, None, None]
     best_val_loss = 100000.0
     best_f1_score_w = -1.0
     best_f1_score_m = -1.0
@@ -106,29 +105,32 @@ for seed in seeds:
         for epoch in tqdm(range(num_epochs)):
             # Train model
             loss = discriminative_trainer(
-                    model=model,
-                    data_loader=train_loader,
-                    optimizer=optimizer,
-                    criterion=criterion)
+                model=model,
+                data_loader=train_loader,
+                optimizer=optimizer,
+                criterion=criterion)
             # log in tensorboard
             writer.add_scalar('Training/Prediction Loss', loss, epoch)
-            
+
             # Eval model using validation_SET
-            loss, avg_f1_weighted, avg_f1_macro,_,_,_ = discriminative_evaluate(model, val_loader, criterion)
+            loss, avg_f1_weighted, avg_f1_macro, _, _, _ = discriminative_evaluate(
+                model, val_loader, criterion)
             # log in tensorboard
             writer.add_scalar('Validation/Prediction Loss', loss, epoch)
-            writer.add_scalar('Validation/Average F1-score Weighted', avg_f1_weighted.mean(), epoch)
-            writer.add_scalar('Validation/Average F1-score Macro', avg_f1_macro.mean(), epoch)
+            writer.add_scalar(
+                'Validation/Average F1-score Weighted', avg_f1_weighted.mean(), epoch)
+            writer.add_scalar('Validation/Average F1-score Macro',
+                              avg_f1_macro.mean(), epoch)
 
-            #Saving the 3 versions of the model 
+            # Saving the 3 versions of the model
             if loss < best_val_loss:
                 best_val_loss = loss
                 best_models[0] = deepcopy(model)
-            
+
             if avg_f1_weighted.mean() > best_f1_score_w:
                 best_f1_score_w = avg_f1_weighted.mean()
                 best_models[1] = deepcopy(model)
-            
+
             if avg_f1_macro.mean() > best_f1_score_m:
                 best_f1_score_m = avg_f1_macro.mean()
                 best_models[2] = deepcopy(model)
@@ -140,7 +142,8 @@ for seed in seeds:
 
     # Test the model
     for i, model in enumerate(best_models):
-        loss, avg_f1_weighted, avg_f1_macro, predictions, avg_p_macro, avg_r_macro = discriminative_evaluate(model, test_loader, criterion)
+        loss, avg_f1_weighted, avg_f1_macro, predictions, avg_p_macro, avg_r_macro = discriminative_evaluate(
+            model, test_loader, criterion)
         print('Test Prediction Loss: ', loss.item())
         print('Test Avg F1-score weighted: ', avg_f1_weighted.mean())
         print('Test Avg F1-score macro: ', avg_f1_macro.mean())
@@ -150,34 +153,44 @@ for seed in seeds:
         scores_macro = np.append(avg_f1_macro, avg_f1_macro.mean())
         macro_precision = np.append(avg_p_macro, avg_p_macro.mean())
         macro_recall = np.append(avg_r_macro, avg_r_macro.mean())
-        scores = np.concatenate((scores_weighted.reshape(-1, 1), scores_macro.reshape(-1, 1)), axis=1)
+        scores = np.concatenate(
+            (scores_weighted.reshape(-1, 1), scores_macro.reshape(-1, 1)), axis=1)
         if i == 0:
-            writer.add_scalar('Testing/F1-score Macro Best Val Loss', avg_f1_macro.mean(), 0)
+            writer.add_scalar(
+                'Testing/F1-score Macro Best Val Loss', avg_f1_macro.mean(), 0)
             with open(os.path.join(writer_path, 'best_val_loss.txt'), 'w') as f:
-                torch.save(model.state_dict(), os.path.join(writer_path, 'best_val_loss.pth'))
+                torch.save(model.state_dict(), os.path.join(
+                    writer_path, 'best_val_loss.pth'))
                 np.savetxt(f, scores)
-                np.save(os.path.join(writer_path, 'best_val_loss.preds'), predictions)
+                np.save(os.path.join(writer_path,
+                        'best_val_loss.preds'), predictions)
                 macro_f1_all_0.append(scores_macro)
                 weighted_f1_all_0.append(scores_weighted)
                 macro_precision_all_0.append(macro_precision)
                 macro_recall_all_0.append(macro_recall)
         elif i == 1:
-            writer.add_scalar('Testing/F1-score Macro Best F1 weighted', avg_f1_macro.mean(), 0)
+            writer.add_scalar(
+                'Testing/F1-score Macro Best F1 weighted', avg_f1_macro.mean(), 0)
             with open(os.path.join(writer_path, 'best_f1_score_weighted.txt'), 'w') as f:
-                torch.save(model.state_dict(), os.path.join(writer_path, 'best_f1_score_weighted.pth'))
+                torch.save(model.state_dict(), os.path.join(
+                    writer_path, 'best_f1_score_weighted.pth'))
                 np.savetxt(f, scores)
-                np.save(os.path.join(writer_path, 'best_f1_score_weighted.preds'), predictions)
+                np.save(os.path.join(writer_path,
+                        'best_f1_score_weighted.preds'), predictions)
         elif i == 2:
-            writer.add_scalar('Testing/F1-score Macro Best F1 macro', avg_f1_macro.mean(), 0)
+            writer.add_scalar(
+                'Testing/F1-score Macro Best F1 macro', avg_f1_macro.mean(), 0)
             with open(os.path.join(writer_path, 'best_f1_score_macro.txt'), 'w') as f:
-                torch.save(model.state_dict(), os.path.join(writer_path, 'best_f1_score_macro.pth'))
+                torch.save(model.state_dict(), os.path.join(
+                    writer_path, 'best_f1_score_macro.pth'))
                 np.savetxt(f, scores)
-                np.save(os.path.join(writer_path, 'best_f1_score_macro.preds'), predictions)
+                np.save(os.path.join(writer_path,
+                        'best_f1_score_macro.preds'), predictions)
                 macro_f1_all_2.append(scores_macro)
                 weighted_f1_all_2.append(scores_weighted)
                 macro_precision_all_2.append(macro_precision)
                 macro_recall_all_2.append(macro_recall)
-                
+
                 # For this one, also save the predictions for the full training set.
                 # train_loader = DataLoader(train_dataset, batch_size, shuffle=False)
                 # train_predictions = model_forward(model, train_loader)
@@ -193,11 +206,17 @@ macro_precision_all_2 = np.array(macro_precision_all_2)
 macro_recall_all_2 = np.array(macro_recall_all_2)
 
 np.savetxt(os.path.join(base_path, 'macro_f1_all_0.txt'), macro_f1_all_0.T)
-np.savetxt(os.path.join(base_path, 'weighted_f1_all_0.txt'), weighted_f1_all_0.T)
-np.savetxt(os.path.join(base_path, 'macro_precision_all_0.txt'), macro_precision_all_0.T)
-np.savetxt(os.path.join(base_path, 'macro_recall_all_0.txt'), macro_recall_all_0.T)
+np.savetxt(os.path.join(base_path, 'weighted_f1_all_0.txt'),
+           weighted_f1_all_0.T)
+np.savetxt(os.path.join(base_path, 'macro_precision_all_0.txt'),
+           macro_precision_all_0.T)
+np.savetxt(os.path.join(base_path, 'macro_recall_all_0.txt'),
+           macro_recall_all_0.T)
 
 np.savetxt(os.path.join(base_path, 'macro_f1_all_2.txt'), macro_f1_all_2.T)
-np.savetxt(os.path.join(base_path, 'weighted_f1_all_2.txt'), weighted_f1_all_2.T)
-np.savetxt(os.path.join(base_path, 'macro_precision_all_2.txt'), macro_precision_all_2.T)
-np.savetxt(os.path.join(base_path, 'macro_recall_all_2.txt'), macro_recall_all_2.T)
+np.savetxt(os.path.join(base_path, 'weighted_f1_all_2.txt'),
+           weighted_f1_all_2.T)
+np.savetxt(os.path.join(base_path, 'macro_precision_all_2.txt'),
+           macro_precision_all_2.T)
+np.savetxt(os.path.join(base_path, 'macro_recall_all_2.txt'),
+           macro_recall_all_2.T)

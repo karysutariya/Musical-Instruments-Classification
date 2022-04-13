@@ -6,7 +6,8 @@ TEST_SPLIT_PATH = 'split01_test.csv'
 
 # Load full dataset
 data = np.load(DATA_NPZ_PATH, allow_pickle=True)
-X, Y_true, Y_mask, sample_key = data['X'], data['Y_true'], data['Y_mask'], data['sample_key']
+X, Y_true = data['X'], data['Y_true']
+Y_mask, sample_key = data['Y_mask'], data['sample_key']
 
 # Load training split csv file
 with open(TRAIN_SPLIT_PATH) as f:
@@ -22,9 +23,8 @@ with open(TEST_SPLIT_PATH) as f:
 train_index = np.array([i for i in range(20000) if sample_key[i] in train_IDs])
 test_index = np.array([i for i in range(20000) if sample_key[i] in test_IDs])
 
-np.savez('train.npz',X = X[train_index], Y_true = Y_true[train_index],
-    Y_mask = Y_mask[train_index], sample_key = sample_key[train_index])
+np.savez('train.npz', X=X[train_index], Y_true=Y_true[train_index],
+         Y_mask=Y_mask[train_index], sample_key=sample_key[train_index])
 
-np.savez('test.npz',X = X[test_index], Y_true = Y_true[test_index],
-    Y_mask = Y_mask[test_index], sample_key = sample_key[test_index])
-	
+np.savez('test.npz', X=X[test_index], Y_true=Y_true[test_index],
+         Y_mask=Y_mask[test_index], sample_key=sample_key[test_index])
