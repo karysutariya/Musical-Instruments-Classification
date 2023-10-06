@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polynomial Musical Instrument Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #upload-form {
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            max-width: 400px;
+            background-color: #f9f9f9;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #result {
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            max-width: 400px;
+            background-color: #f9f9f9;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #333;
+            color: #fff;
+            padding: 20px 0;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .instrument-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .instrument-list li {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        /* Style for links (if needed) */
+        .instrument-list li a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        /* Hover effect for links (if needed) */
+        .instrument-list li a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Polynomial Musical Instrument Detection</h1>
+
+    <!-- File Upload Form -->
+    <div id="upload-form">
+        <h2>Upload your music</h2>
+        <form id="file-upload-form" enctype="multipart/form-data">
+            <input type="file" name="file" id="file" accept=".mp3, .wav, .ogg" required>
+            <input type="submit" value="Upload">
+        </form>
+    </div>
+
+    <!-- Result Section (Hidden by default) -->
+    <div id="result" style="display: none;">
+        <h2>Detected Musical Instruments: </h2>
+        <div id="processing-results"></div>
+    </div>
+
+    <script>
+        // Handle form submission
+        document.getElementById('file-upload-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Get the uploaded file
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+
+            if (file) {
+                // Create a FormData object to send the file to the server
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Send the file to the Flask server for processing
+                fetch('/', {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Display the processing results
+                    const resultContainer = document.getElementById('processing-results');
+                    resultContainer.innerHTML = data.result;
+                    document.getElementById('result').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while processing the file.');
+                });
+            } else {
+                alert('Please select a file to upload.');
+            }
+        });
+    </script>
+</body>
+<footer>
+    <div class="footer-content">
+        <h3>This model can detect the following musical instruments:</h3>
+        <ul class="instrument-list">
+            Accordion, Banjo, Bass, Cello, Clarinet, Cymbals, Drums, Flute, Guitar, Mallet Percussion, Mandolin, Organ, Piano, Saxophone, Synthesizer, Trombon, Trumpet, Ukulele, Violin, Voice
+        </ul>
+    </div>
+</footer>
+</html>
